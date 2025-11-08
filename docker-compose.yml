@@ -39,13 +39,29 @@ services:
       - http
     networks:
       - service_network
-  page_reader:
-    image: semanticsearch-page_reader:latest
+  page_reader_modified:
+    build:
+      context: ./PageR
     container_name: page_reader
     ports:
       - "8000:8000"
     networks:
       - service_network
+  # page_reader:
+  #   image: mynewproject-page_reader:latest
+  #   container_name: page_reader
+  #   ports:
+  #     - "8000:8000"
+  #   networks:
+  #     - service_network
+  # page_reader:
+  #   build:
+  #     context: ./PageR
+  #   container_name: page_reader
+  #   ports:
+  #     - "8000:8000"
+  #   networks:
+  #     - service_network
   # page_reader:
   #   build:
   #     context: https://github.com/YRL-AIDA/PageR.git#main

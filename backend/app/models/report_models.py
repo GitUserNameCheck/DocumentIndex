@@ -1,0 +1,8 @@
+import enum
+
+class ReportStatus(enum.Enum):
+
+    CREATED = "CREATED"
+    PROCESSING = "PROCESSING"
+    PROCESSED = "PROCESSED"
+    PROCESSING_FAILED = "PROCESSING FAILED"

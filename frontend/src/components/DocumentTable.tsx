@@ -1,6 +1,6 @@
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import DownloadButton from "./DownloadButton";
-import DeleteButton from "./DeleteButton";
+import IdPostActionButton from "./IdPostActionButton";
 import type { DocumentItem } from "@/types/document-types";
 
 
@@ -30,7 +30,12 @@ export default function DocumentTable({ data, to_invalidate }: { data: Array<Doc
         columnHelper.display({
             id: 'delete',
             header: 'Delete',
-            cell: ({ row }) => <DeleteButton url={"/document/delete"} id={row.original.id} to_invalidate={to_invalidate} />
+            cell: ({ row }) => <IdPostActionButton url={"/document/delete"} id={row.original.id} to_invalidate={to_invalidate} action_label="Delete" />
+        }),
+        columnHelper.display({
+            id: 'process',
+            header: 'Process Document',
+            cell: ({ row }) => <IdPostActionButton url={"/document/process"} id={row.original.id} to_invalidate={to_invalidate} action_label="Process" />
         })
     ]
 

@@ -1,9 +1,8 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query';
 import type { DocumentItem } from '@/types/document-types';
 import { tryCatch } from '@/utils/try-catch';
 import DocumentTable from '@/components/DocumentTable';
-import { setStoredUser, useAuth } from '@/integrations/auth/root-provider';
 import UploadFileForm from '@/components/UploadFileForm';
 
 export const Route = createFileRoute('/_auth/documents')({
@@ -11,8 +10,6 @@ export const Route = createFileRoute('/_auth/documents')({
 })
 
 function RouteComponent() {
-  const auth = useAuth()
-  const navigate = useNavigate()
 
 
   const { data: documents, isLoading, isError, error } = useQuery<Array<DocumentItem>>({
@@ -30,13 +27,6 @@ function RouteComponent() {
 
     if (error) {
       throw new Error(error.message)
-    }
-
-    if (res.status == 401) {
-      setStoredUser(null, auth)
-      navigate({
-        to: '/login',
-      })
     }
 
     const data = await res.json();

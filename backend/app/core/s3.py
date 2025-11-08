@@ -1,4 +1,6 @@
+from typing import Annotated
 import boto3
+from fastapi import Depends
 from app.core.config import config
 from botocore.client import Config
 

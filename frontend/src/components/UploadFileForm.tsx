@@ -1,18 +1,14 @@
 import {  useForm } from "react-hook-form"
-import { useNavigate } from "@tanstack/react-router"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query";
 import type {SubmitHandler} from "react-hook-form";
 import type {UploadFileFormValues} from "@/utils/form-schema";
-import { setStoredUser, useAuth } from "@/integrations/auth/root-provider"
 import {  uploadFileSchema } from "@/utils/form-schema"
 import { tryCatch } from "@/utils/try-catch"
 
 
 export default function UploadFileForm({ url, to_invalidate }: { url: string, to_invalidate: Array<string> | null }) {
 
-    const auth = useAuth()
-    const navigate = useNavigate()
     const queryClient = useQueryClient()
 
     const { register,
@@ -42,13 +38,6 @@ export default function UploadFileForm({ url, to_invalidate }: { url: string, to
         if (error) {
             setError("root", { message: error.message });
             return;
-        }
-
-        if (res.status == 401) {
-            setStoredUser(null, auth)
-            navigate({
-                to: '/login',
-            })
         }
 
         const data = await res.json();
