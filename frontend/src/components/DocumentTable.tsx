@@ -34,7 +34,7 @@ export default function DocumentTable({ data, to_invalidate }: { data: Array<Doc
         }),
         columnHelper.display({
             id: 'process',
-            header: 'Process Document',
+            header: 'Process',
             cell: ({ row }) => <IdPostActionButton url={"/document/process"} id={row.original.id} to_invalidate={to_invalidate} action_label="Process" />
         })
     ]

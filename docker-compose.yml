@@ -13,30 +13,20 @@ services:
     command: server /data --console-address ":9001"
     networks:
       - service_network
-  weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.33.0
-    container_name: weaviated
+  qdrant:
+    image: qdrant/qdrant:v1.16.1-unprivileged
+    container_name: qdrant
     ports:
-      - 8080:8080
-      - 50051:50051 # grpc_port
-    volumes:
-    - ./weaviate:/var/lib/weaviate
+      - 6333:6333
+      - 6334:6334
     environment:
-      DISABLE_TELEMETRY: 'true'
-      QUERY_DEFAULTS_LIMIT: 25
-      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      CLUSTER_HOSTNAME: 'node1'
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'user-a-key,user-b-key'
-      AUTHENTICATION_APIKEY_USERS: 'user-a,user-b'
-    command:
-      - --host
-      - 0.0.0.0
-      - --port
-      - '8080'
-      - --scheme
-      - http
+      QDRANT__SERVICE__API_KEY: "your_secret_api_key_here"
+      QDRANT__TELEMETRY_DISABLED: true
+      # QDRANT__SERVICE__ENABLE_TLS: "1"
+      # QDRANT__TLS__CERT: "/path/to/your/cert.pem"
+      # QDRANT__TLS__KEY: "/path/to/your/key.pem"
+    volumes:
+      - qdrant-storage:/qdrant/storage
     networks:
       - service_network
   page_reader_modified:
@@ -47,30 +37,6 @@ services:
       - "8000:8000"
     networks:
       - service_network
-  # page_reader:
-  #   image: mynewproject-page_reader:latest
-  #   container_name: page_reader
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - service_network
-  # page_reader:
-  #   build:
-  #     context: ./PageR
-  #   container_name: page_reader
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - service_network
-  # page_reader:
-  #   build:
-  #     context: https://github.com/YRL-AIDA/PageR.git#main
-  #     dockerfile: ./Dockerfile
-  #   container_name: page_reader
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - service_network
   postgres:
     image: postgres:18.0
     container_name: postgres_db
@@ -100,3 +66,6 @@ services:
 
 networks:
   service_network:
+
+volumes:
+  qdrant-storage:

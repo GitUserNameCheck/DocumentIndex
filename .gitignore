@@ -1,6 +1,7 @@
 minio/
 pgadmin/
 postgres/
-weaviate/
-команды.txt
 PageR/
+qdrant/
+distiluse-base-multilingual-cased-v1/
+команды.txt

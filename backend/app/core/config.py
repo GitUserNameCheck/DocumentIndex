@@ -14,5 +14,7 @@ class Config(BaseSettings):
     s3_login: str = ""
     s3_password: str = ""
     s3_url: str = ""
+    pager_url: str = ""
+    embedding_model_path: str = ""
 
 config = Config()

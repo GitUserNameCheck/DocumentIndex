@@ -33,7 +33,7 @@ async def upload_document(user_data: AuthUserData, db: DbSession, file: UploadFi
         )
     
     # come up with something better cause it is cleary won't work cause file.size can be spoofed
-    # maybe shuold do ASGI server content-length header validation and check here validated header
+    # maybe should do ASGI server content-length header validation and check here validated header
     # https://github.com/fastapi/fastapi/discussions/8167
     # maybe just read chunks till it exeeds limit
     if not 0 < file.size <= 40 * MB:
@@ -68,7 +68,7 @@ async def delete_document(id: int, user_data: AuthUserData, db: DbSession):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This file is not yours"
-    )
+        )
     if document.status == DocumentStatus.PROCESSING.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -95,16 +95,16 @@ async def process_document(id: int, user_data: AuthUserData, db: DbSession):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This file is not yours"
     )
-    if document.status == DocumentStatus.PROCESSED.value:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Document is already processed"
-        )
-    if document.status == DocumentStatus.PROCESSING.value:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Document is already being processed"
-        )
+    # if document.status == DocumentStatus.PROCESSED.value:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_409_CONFLICT,
+    #         detail="Document is already processed"
+    #     )
+    # if document.status == DocumentStatus.PROCESSING.value:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_409_CONFLICT,
+    #         detail="Document is already being processed"
+    #     )
 
     await pager_process_document(document, user_data, db)
 

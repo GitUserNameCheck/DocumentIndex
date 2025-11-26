@@ -1,4 +1,3 @@
-import enum
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy import ForeignKey, String, create_engine
