@@ -16,5 +16,7 @@ class Config(BaseSettings):
     s3_url: str = ""
     pager_url: str = ""
     embedding_model_path: str = ""
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
 
 config = Config()

@@ -1,3 +1,4 @@
+import json
 import logging
 from io import BytesIO
 from uuid import uuid4
@@ -6,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 import httpx
 from sqlalchemy.orm import Session
 
-from app.db.schema import Document
+from app.db.schema import Document, Report
 from app.models.auth_models import UserData
 from app.core.s3 import AWS_BUCKET, s3_client
 from app.core.config import config
@@ -47,37 +48,54 @@ async def s3_get_all_documents(user_data: UserData,  db: Session) -> list[dict[s
 
 async def pager_process_document(document: Document, user_data: UserData, db: Session):
     logging.info(f"Processing document {document.s3_filename}.{document.s3_mime_type} from s3 for user {user_data.user_id}")
-    # document.status = DocumentStatus.PROCESSING.value
-    # db.commit()
+    document.status = DocumentStatus.PROCESSING.value
+    db.commit()
     try:
 
-        files = {
-            "file": (
-                f"{document.s3_filename}.{document.s3_mime_type}",
-                s3_client.get_object(Bucket=AWS_BUCKET, Key=f"documents/{document.s3_filename}.{document.s3_mime_type}")["Body"],
-                f"application/{document.s3_mime_type}"
+        if document.report_id is None:
+            files = {
+                "file": (
+                    f"{document.s3_filename}.{document.s3_mime_type}",
+                    await run_in_threadpool(s3_client.get_object(Bucket=AWS_BUCKET, Key=f"documents/{document.s3_filename}.{document.s3_mime_type}")["Body"].read),
+                    f"application/{document.s3_mime_type}"
+                )
+            }
+
+            data = {
+                "process": '{"glam_rows": true}'
+            }
+
+            # maybe should call post with run_in_threadpool, not sure
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(config.pager_url + "/", data=data, files=files)
+
+            report_uuid = uuid4()
+            
+            report = await s3_upload_report(content=response.content, s3_filename=str(report_uuid), document=document, db=db)
+
+            report_obj = ReportJson.model_validate(response.json())
+
+        else: 
+            report = db.query(Report).filter(Report.id == document.report_id).first()
+
+            # report = await run_in_threadpool(s3_client.get_object, Bucket=AWS_BUCKET, Key=f"reports/{report.s3_filename}.json")
+
+            report_file = await run_in_threadpool(
+                lambda: s3_client.get_object(
+                    Bucket=AWS_BUCKET,
+                    Key=f"reports/{report.s3_filename}.json"
+                )["Body"].read()
             )
-        }
 
-        data = {
-            "process": '{"glam_rows": true}'
-        }
+            data = json.loads(report_file)
 
-        # maybe should call post with run_in_threadpool, not sure
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(config.pager_url + "/", data=data, files=files)
-
-        # report_uuid = uuid4()
-        
-        # report = await s3_upload_report(content=response.content, s3_filename=str(report_uuid), document=document, db=db)
-
-        report_obj = ReportJson.model_validate(response.json())
+            report_obj = ReportJson.model_validate(data)
         
         await run_in_threadpool(process_report, report_obj, document.id, user_data.user_id)
 
-        # document.status = DocumentStatus.PROCESSED.value
-        # document.report_id = report.id
-        # db.commit()
+        document.status = DocumentStatus.PROCESSED.value
+        document.report_id = report.id
+        db.commit()
 
     except Exception as e:
         logging.exception(f"Error while processing document {document.s3_filename}.{document.s3_mime_type} from s3 for user {user_data.user_id} \n {e}")

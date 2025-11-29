@@ -2,10 +2,13 @@ from io import BytesIO
 import logging
 
 from fastapi.concurrency import run_in_threadpool
+from uuid import uuid4
 from app.db.schema import Document, Report
 from app.core.s3 import AWS_BUCKET, s3_client
 from app.core.embedding import model
+from app.core.qdrant import qdrant_client, collection_name
 from sqlalchemy.orm import Session
+from qdrant_client.http import models
 from app.models.report_models import ReportJson, ReportStatus
 
 async def s3_upload_report(content: bytes, s3_filename: str, document: Document, db: Session) -> Report:
@@ -25,7 +28,7 @@ async def s3_delete_report(document: Document, db: Session) -> Report:
     db.commit()
 
 
-def process_report(report: ReportJson, document_id: int, user_id: int) -> list[str]:
+def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
     text = ""
 
     for page in report.pages:
@@ -39,10 +42,26 @@ def process_report(report: ReportJson, document_id: int, user_id: int) -> list[s
 
     chunks = chunk_text(text)
 
-    # embeddings = model.encode(chunks)
+    embeddings = model.encode(chunks)
+    
+    points = []
+    for text, embedding in zip(chunks, embeddings):
+        points.append(
+            models.PointStruct(
+                id = uuid4(),
+                vector = embedding,
+                payload = {
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "text": text
+                }
+            )
+        )
 
-    return 
-
+    qdrant_client.upsert(
+        collection_name=collection_name,
+        points=points
+    )
 
 def chunk_text(text: str, chunk_size: int = 150, overlap: int = 50) -> list[str]:
     chunks = []

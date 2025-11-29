@@ -95,16 +95,16 @@ async def process_document(id: int, user_data: AuthUserData, db: DbSession):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This file is not yours"
     )
-    # if document.status == DocumentStatus.PROCESSED.value:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_409_CONFLICT,
-    #         detail="Document is already processed"
-    #     )
-    # if document.status == DocumentStatus.PROCESSING.value:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_409_CONFLICT,
-    #         detail="Document is already being processed"
-    #     )
+    if document.status == DocumentStatus.PROCESSED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is already processed"
+        )
+    if document.status == DocumentStatus.PROCESSING.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is already being processed"
+        )
 
     await pager_process_document(document, user_data, db)
 
