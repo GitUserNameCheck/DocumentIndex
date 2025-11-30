@@ -45,7 +45,6 @@ class Report(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), unique=True)
-    status: Mapped[str]
     s3_filename: Mapped[str] = mapped_column(unique=True)
 
     

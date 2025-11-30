@@ -16,9 +16,15 @@ if not qdrant_client.collection_exists(collection_name=collection_name):
         vectors_config=models.VectorParams(
             size=512,
             distance=models.Distance.COSINE
-        )
+        ),
+        hnsw_config=models.HnswConfigDiff(
+            payload_m=16,
+            m=0,
+        ),
     )
 
+    #might be useful later if slow
+    #https://qdrant.tech/documentation/guides/multitenancy/#configure-multitenancy
     qdrant_client.create_payload_index(
         collection_name=collection_name,
         field_name="user_id",

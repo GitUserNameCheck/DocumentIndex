@@ -2,13 +2,6 @@ import enum
 from typing import List
 from pydantic import BaseModel
 
-class ReportStatus(enum.Enum):
-
-    CREATED = "CREATED"
-    PROCESSING = "PROCESSING"
-    PROCESSED = "PROCESSED"
-    PROCESSING_FAILED = "PROCESSING FAILED"
-
 
 class Annotations(BaseModel):
     is_italic: bool

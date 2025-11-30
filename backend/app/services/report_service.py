@@ -5,16 +5,17 @@ from fastapi.concurrency import run_in_threadpool
 from uuid import uuid4
 from app.db.schema import Document, Report
 from app.core.s3 import AWS_BUCKET, s3_client
-from app.core.embedding import model
+from app.core.embedding import embedding_model
 from app.core.qdrant import qdrant_client, collection_name
+from app.core.config import config
 from sqlalchemy.orm import Session
 from qdrant_client.http import models
-from app.models.report_models import ReportJson, ReportStatus
+from app.models.report_models import ReportJson
 
 async def s3_upload_report(content: bytes, s3_filename: str, document: Document, db: Session) -> Report:
     logging.info(f"Creating report for document {document.s3_filename}.{document.s3_mime_type} from s3")
     await run_in_threadpool(s3_client.upload_fileobj, Fileobj=BytesIO(content), Bucket=AWS_BUCKET, Key=f"reports/{s3_filename}.json")
-    report = Report(document_id = document.id, status = ReportStatus.CREATED.value, s3_filename = s3_filename)
+    report = Report(document_id = document.id, s3_filename = s3_filename)
     db.add(report)
     db.commit()
     return report
@@ -42,7 +43,7 @@ def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
 
     chunks = chunk_text(text)
 
-    embeddings = model.encode(chunks)
+    embeddings = embedding_model.encode(chunks)
     
     points = []
     for text, embedding in zip(chunks, embeddings):
@@ -51,7 +52,7 @@ def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
                 id = uuid4(),
                 vector = embedding,
                 payload = {
-                    "user_id": user_id,
+                    "user_id": str(user_id),
                     "document_id": document_id,
                     "text": text
                 }
@@ -60,10 +61,11 @@ def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
 
     qdrant_client.upsert(
         collection_name=collection_name,
-        points=points
+        points=points,
+        wait=True
     )
 
-def chunk_text(text: str, chunk_size: int = 150, overlap: int = 50) -> list[str]:
+def chunk_text(text: str, chunk_size: int = config.embedding_text_size, overlap: int = config.embedding_text_overlap) -> list[str]:
     chunks = []
     text_len = len(text)
     start = 0

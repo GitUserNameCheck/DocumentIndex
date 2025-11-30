@@ -18,5 +18,8 @@ class Config(BaseSettings):
     embedding_model_path: str = ""
     qdrant_url: str = ""
     qdrant_api_key: str = ""
+    embedding_text_size: int = 150
+    embedding_text_overlap: int = 50
+    qdrant_distance_score_threshold: float = 0.5
 
 config = Config()

@@ -6,13 +6,16 @@ from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 import httpx
 from sqlalchemy.orm import Session
+from qdrant_client import models
 
 from app.db.schema import Document, Report
 from app.models.auth_models import UserData
 from app.core.s3 import AWS_BUCKET, s3_client
 from app.core.config import config
+from app.core.embedding import embedding_model
+from app.core.qdrant import qdrant_client, collection_name
 from app.models.document_models import DocumentStatus
-from app.services.report_service import process_report, s3_delete_report, s3_upload_report
+from app.services.report_service import chunk_text, process_report, s3_delete_report, s3_upload_report
 from app.models.report_models import ReportJson
 
 PRESIGNED_URLS_EXPIRATION_TIME_SECONDS = 3600 # 1 hour
@@ -26,10 +29,48 @@ async def s3_upload_document(content: bytes, s3_filename: str, s3_mime_type: str
 
 
 async def s3_delete_document(document: Document, user_data: UserData, db: Session)  -> None:
-    logging.info(f"Deleting file {document.name}.{document.s3_mime_type} from s3 which is owned by user {user_data.user_id}")
-    if document.status == DocumentStatus.PROCESSED.value:
+    logging.info(f"Starting deleting process for document {document.id} which is owned by user {user_data.user_id}")
+
+    if document.report_id is not None:
+        filter_condition = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="user_id",
+                    match=models.MatchValue(
+                        value=str(user_data.user_id),
+                    ),
+                ),
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchValue(
+                        value=document.id
+                    )
+                )
+            ]
+        )
+
+        search = qdrant_client.query_points(
+            collection_name=collection_name,
+            query_filter=filter_condition,
+            limit=1,
+            with_payload=False,
+            with_vectors=False
+        )
+
+        if len(search.points) > 0:
+            logging.info(f"Deleting vectors for report {document.report_id} which is owned by user {user_data.user_id}")
+            qdrant_client.delete(
+                collection_name=collection_name,
+                points_selector=filter_condition,
+                wait=True
+            )
+
+        logging.info(f"Deleting report {document.report_id} which is owned by user {user_data.user_id}")
         await s3_delete_report(document=document, db=db)
+
+    logging.info(f"Deleting document {document.id} from s3")
     await run_in_threadpool(s3_client.delete_object, Bucket=AWS_BUCKET, Key=f"documents/{document.s3_filename}.{document.s3_mime_type}")
+    logging.info(f"Deleting document {document.id} from db")
     db.delete(document)
     db.commit()
 
@@ -46,7 +87,7 @@ async def s3_get_all_documents(user_data: UserData,  db: Session) -> list[dict[s
         urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
     return urls
 
-async def pager_process_document(document: Document, user_data: UserData, db: Session):
+async def process_document(document: Document, user_data: UserData, db: Session):
     logging.info(f"Processing document {document.s3_filename}.{document.s3_mime_type} from s3 for user {user_data.user_id}")
     document.status = DocumentStatus.PROCESSING.value
     db.commit()
@@ -65,6 +106,7 @@ async def pager_process_document(document: Document, user_data: UserData, db: Se
                 "process": '{"glam_rows": true}'
             }
 
+            logging.info(f"Sending documents {document.s3_filename}.{document.s3_mime_type} to pager for user {user_data.user_id}")
             # maybe should call post with run_in_threadpool, not sure
             async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(config.pager_url + "/", data=data, files=files)
@@ -91,6 +133,8 @@ async def pager_process_document(document: Document, user_data: UserData, db: Se
 
             report_obj = ReportJson.model_validate(data)
         
+
+        logging.info(f"Processing report {report.s3_filename}.json for user {user_data.user_id}")
         await run_in_threadpool(process_report, report_obj, document.id, user_data.user_id)
 
         document.status = DocumentStatus.PROCESSED.value
@@ -106,3 +150,52 @@ async def pager_process_document(document: Document, user_data: UserData, db: Se
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Document processing failed"
         )
+    
+
+async def search_documents(text: str, user_data: UserData,  db: Session) -> list[dict[str, str]]:
+    logging.info(f"Searching documents for user {user_data.user_id} with string {text}")
+
+    embedding = embedding_model.encode(text)
+
+    filter_condition = models.Filter(
+        must=[
+            models.FieldCondition(
+                key="user_id",
+                match=models.MatchValue(
+                    value=str(user_data.user_id),
+                ),
+            ),
+        ]
+    )
+
+    result = qdrant_client.query_points_groups(
+        collection_name=collection_name,
+        query_filter=filter_condition,
+        query=embedding,
+        group_by="document_id",
+        group_size=1,
+        limit=5,
+        score_threshold=config.qdrant_distance_score_threshold
+    )
+
+    documents = []
+    for group in result.groups:
+        documents.append(group.hits[0].payload.get("document_id"))
+
+    print(documents)
+    
+
+
+    # logging.info(f"Presigning all documents urls for user {user_data.user_id} from s3")
+    # documents = db.query(Document).filter(Document.owner_id == user_data.user_id).all()
+    # urls = []
+    # for document in documents:
+    #     url = s3_client.generate_presigned_url(
+    #         ClientMethod="get_object",
+    #         Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
+    #         ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
+    #     )
+    #     urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
+    # return urls
+
+

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from app.core.magika import magika
 from app.services.auth_service import AuthUserData
-from app.services.document_service import pager_process_document, s3_get_all_documents, s3_upload_document, s3_delete_document
+from app.services.document_service import search_documents as service_search_documents, process_document as service_process_document, s3_get_all_documents, s3_upload_document, s3_delete_document
 from app.db.schema import DbSession, Document
 from app.models.document_models import DocumentStatus
 
@@ -106,6 +106,18 @@ async def process_document(id: int, user_data: AuthUserData, db: DbSession):
             detail="Document is already being processed"
         )
 
-    await pager_process_document(document, user_data, db)
+    await service_process_document(document, user_data, db)
 
     return {"message": "document successfuly processed"}
+
+
+@router.get("/search_documents")
+async def search_documents(text:str, user_data: AuthUserData, db: DbSession):
+
+    # urls = await s3_get_all_documents(user_data, db)
+
+    await service_search_documents(text, user_data, db)
+
+    urls = []
+
+    return {"message": "file successfuly deleted", "urls": urls}
