@@ -19,7 +19,7 @@ export default function IdPostActionButton({ url, id, to_invalidate, action_labe
         const data = await res.json();
 
         if (!res.ok) {
-            alert( data["detail"])
+            alert(data["detail"])
             return;
         }
 

@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings
 
 load_dotenv()
 
-
 class Config(BaseSettings):
     app_name: str = "ScalableFastAPIProject"
     secret_key: str = "dev_secret"

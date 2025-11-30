@@ -1,35 +1,54 @@
 from io import BytesIO
 import logging
-
 from fastapi.concurrency import run_in_threadpool
 from uuid import uuid4
-from app.db.schema import Document, Report
-from app.core.s3 import AWS_BUCKET, s3_client
-from app.core.embedding import embedding_model
-from app.core.qdrant import qdrant_client, collection_name
-from app.core.config import config
 from sqlalchemy.orm import Session
+from torch import Tensor
+from app.core.ml_models import ml_models
+from types_boto3_s3.client import S3Client
+from app.db.schema import Document, Report
+from app.core.s3 import AWS_BUCKET
+from app.core.qdrant import QdrantClient, collection_name
+from app.core.config import config
 from qdrant_client.http import models
 from app.models.report_models import ReportJson
 
-async def s3_upload_report(content: bytes, s3_filename: str, document: Document, db: Session) -> Report:
+def s3_upload_report(content: bytes, s3_filename: str, document: Document, s3_client: S3Client, db: Session) -> Report:
     logging.info(f"Creating report for document {document.s3_filename}.{document.s3_mime_type} from s3")
-    await run_in_threadpool(s3_client.upload_fileobj, Fileobj=BytesIO(content), Bucket=AWS_BUCKET, Key=f"reports/{s3_filename}.json")
+    s3_client.upload_fileobj(Fileobj=BytesIO(content), Bucket=AWS_BUCKET, Key=f"reports/{s3_filename}.json")
     report = Report(document_id = document.id, s3_filename = s3_filename)
     db.add(report)
+    db.flush()
+    document.report_id = report.id
     db.commit()
     return report
 
-async def s3_delete_report(document: Document, db: Session) -> Report:
+def s3_delete_report(document: Document, s3_client: S3Client, db: Session) -> Report:
     report = db.query(Report).filter(Report.id == document.report_id).first()
     logging.info(f"Deleting report {report.s3_filename} from s3 for document {report.document_id}")
-    await run_in_threadpool(s3_client.delete_object, Bucket=AWS_BUCKET, Key=f"reports/{report.s3_filename}.json")
+    s3_client.delete_object(Bucket=AWS_BUCKET, Key=f"reports/{report.s3_filename}.json")
     document.report_id = None
     db.delete(report)
     db.commit()
 
 
-def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
+async def process_report(report: ReportJson, document_id: int, user_id: int, qdrant_client: QdrantClient) -> None:
+    
+    text = await run_in_threadpool(prepare_text, report)
+    
+    chunks = await run_in_threadpool(chunk_text, text)
+
+    embeddings = await run_in_threadpool(ml_models["embedding_model"].encode, chunks)
+
+    points = await run_in_threadpool(get_points, chunks, embeddings, user_id, document_id)
+
+    await qdrant_client.upsert(
+        collection_name=collection_name,
+        points=points,
+        wait=True
+    )
+
+def prepare_text(report: ReportJson) -> str:
     text = ""
 
     for page in report.pages:
@@ -41,29 +60,7 @@ def process_report(report: ReportJson, document_id: int, user_id: int) -> None:
     text = text.replace("-\n", "")
     text = text.replace("\n", " ")
 
-    chunks = chunk_text(text)
-
-    embeddings = embedding_model.encode(chunks)
-    
-    points = []
-    for text, embedding in zip(chunks, embeddings):
-        points.append(
-            models.PointStruct(
-                id = uuid4(),
-                vector = embedding,
-                payload = {
-                    "user_id": str(user_id),
-                    "document_id": document_id,
-                    "text": text
-                }
-            )
-        )
-
-    qdrant_client.upsert(
-        collection_name=collection_name,
-        points=points,
-        wait=True
-    )
+    return text
 
 def chunk_text(text: str, chunk_size: int = config.embedding_text_size, overlap: int = config.embedding_text_overlap) -> list[str]:
     chunks = []
@@ -81,3 +78,20 @@ def chunk_text(text: str, chunk_size: int = config.embedding_text_size, overlap:
         start = end - overlap
 
     return chunks
+
+def get_points(chunks: list[str], embeddings: Tensor, user_id: int, document_id: int) -> list[models.PointStruct]:
+    points = []
+    for text, embedding in zip(chunks, embeddings):
+        points.append(
+            models.PointStruct(
+                id = uuid4(),
+                vector = embedding,
+                payload = {
+                    "user_id": str(user_id),
+                    "document_id": document_id,
+                    "text": text
+                }
+            )
+        )
+
+    return points

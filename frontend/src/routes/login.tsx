@@ -12,7 +12,7 @@ export const Route = createFileRoute('/login')({
   beforeLoad: ({ context }) => {
     if (context.auth?.user != null) {
       throw redirect({
-        to: '/',
+        to: '/documents',
       })
     }
   },
@@ -56,7 +56,7 @@ function RouteComponent() {
     setStoredUser(data.username, auth)
 
     navigate({
-      to: '/',
+      to: '/documents',
     })
   }
 
