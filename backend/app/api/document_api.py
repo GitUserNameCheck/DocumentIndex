@@ -85,27 +85,27 @@ def get_all_documents(user_data: AuthUserData, s3_client: S3Client, db: DbSessio
 
     urls = s3_get_all_documents(user_data, s3_client, db)
 
-    return {"message": "file successfuly deleted", "urls": urls}
+    return {"urls": urls}
 
 
 @router.post("/process")
 async def process_document(id: int, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client,  db: DbSession):
     document = await run_in_threadpool(lambda: db.query(Document).filter(Document.id == id).first())
-    # if document.owner_id != user_data.user_id:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="This file is not yours"
-    # )
-    # if document.status == DocumentStatus.PROCESSED.value:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_409_CONFLICT,
-    #         detail="Document is already processed"
-    #     )
-    # if document.status == DocumentStatus.PROCESSING.value:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_409_CONFLICT,
-    #         detail="Document is already being processed"
-    #     )
+    if document.owner_id != user_data.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This file is not yours"
+    )
+    if document.status == DocumentStatus.PROCESSED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is already processed"
+        )
+    if document.status == DocumentStatus.PROCESSING.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is already being processed"
+        )
 
     await service_process_document(document, user_data, qdrant_client, s3_client, db)
 
@@ -117,8 +117,6 @@ async def search_documents(text:str, user_data: AuthUserData, qdrant_client: Qdr
 
     # urls = await s3_get_all_documents(user_data, db)
 
-    await service_search_documents(text, user_data, qdrant_client, s3_client, db)
+    urls = await service_search_documents(text, user_data, qdrant_client, s3_client, db)
 
-    urls = []
-
-    return {"message": "file successfuly deleted", "urls": urls}
+    return {"urls": urls}

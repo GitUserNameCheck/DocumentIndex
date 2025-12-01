@@ -178,24 +178,20 @@ async def search_documents(text: str, user_data: UserData, qdrant_client: AsyncQ
         score_threshold=config.qdrant_distance_score_threshold
     )
 
-    documents = []
+    documents_ids = []
     for group in result.groups:
-        documents.append(group.hits[0].payload.get("document_id"))
-
-    print(documents)
+        documents_ids.append(group.hits[0].payload.get("document_id"))
     
-
-
-    # logging.info(f"Presigning all documents urls for user {user_data.user_id} from s3")
-    # documents = db.query(Document).filter(Document.owner_id == user_data.user_id).all()
-    # urls = []
-    # for document in documents:
-    #     url = s3_client.generate_presigned_url(
-    #         ClientMethod="get_object",
-    #         Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
-    #         ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
-    #     )
-    #     urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
-    # return urls
+    logging.info(f"Presigning found documents urls for user {user_data.user_id} from s3")
+    documents = await run_in_threadpool(lambda: db.query(Document).filter(Document.id.in_(documents_ids)).all())
+    urls = []
+    for document in documents:
+        url = s3_client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
+            ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
+        )
+        urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
+    return urls
 
 
