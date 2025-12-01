@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { tryCatch } from "@/utils/try-catch"
 
 
-export default function IdPostActionButton({ url, id, to_invalidate, action_label }: { url: string, id: number, to_invalidate: Array<string> | null, action_label: string }) {
+export default function IdPostActionButton({ url, id, toInvalidate, actionLabel }: { url: string, id: number, toInvalidate: Array<string> | null, actionLabel: string }) {
     const queryClient = useQueryClient()
 
     const onClick = async () => {
@@ -23,14 +23,14 @@ export default function IdPostActionButton({ url, id, to_invalidate, action_labe
             return;
         }
 
-        if(to_invalidate != null){
-            queryClient.invalidateQueries({queryKey: to_invalidate})
+        if (toInvalidate != null){
+            queryClient.invalidateQueries({ queryKey: toInvalidate })
         }
     }
 
     return (
         <button onClick={onClick} className="px-2 py-1 border rounded text-sm hover:cursor-pointer">
-            {action_label}
+            {actionLabel}
         </button>
     )
 }

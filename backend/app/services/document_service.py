@@ -76,18 +76,28 @@ async def s3_delete_document(document: Document, user_data: UserData, qdrant_cli
     await run_in_threadpool(db.delete, document)
     await run_in_threadpool(db.commit)
 
-def s3_get_all_documents(user_data: UserData, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
-    logging.info(f"Presigning all documents urls for user {user_data.user_id} from s3")
-    documents = db.query(Document).filter(Document.owner_id == user_data.user_id).all()
-    urls = []
+def s3_get_documents(page: int, page_size: int, user_data: UserData, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
+    logging.info(f"Presigning documents urls for user {user_data.user_id} from s3")
+    query = db.query(Document).filter(Document.owner_id == user_data.user_id)
+
+    total_items = query.count()
+
+    documents = (
+        query.offset((page-1)*page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    result = []
     for document in documents:
         url = s3_client.generate_presigned_url(
             ClientMethod="get_object",
             Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
             ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
         )
-        urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
-    return urls
+        result.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
+        
+    return {"page": page, "page_size": page_size, "total_items": total_items, "documents": result}
 
 async def process_document(document: Document, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session):
     logging.info(f"Processing document {document.s3_filename}.{document.s3_mime_type} from s3 for user {user_data.user_id}")

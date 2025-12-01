@@ -8,7 +8,7 @@ from app.core.ml_models import ml_models
 from app.core.s3 import S3Client
 from app.core.qdrant import QdrantClient
 from app.services.auth_service import AuthUserData
-from app.services.document_service import search_documents as service_search_documents, process_document as service_process_document, s3_get_all_documents, s3_upload_document, s3_delete_document
+from app.services.document_service import search_documents as service_search_documents, process_document as service_process_document, s3_get_documents, s3_upload_document, s3_delete_document
 from app.db.schema import DbSession, Document
 from app.models.document_models import DocumentStatus
 
@@ -80,12 +80,12 @@ async def delete_document(id: int, user_data: AuthUserData, qdrant_client: Qdran
 
     return {"message": "file successfuly deleted"}
 
-@router.get("/all")
-def get_all_documents(user_data: AuthUserData, s3_client: S3Client, db: DbSession):
+@router.get("/get")
+def get_documents(user_data: AuthUserData, s3_client: S3Client, db: DbSession, page: int = 1, page_size: int = 20):
 
-    urls = s3_get_all_documents(user_data, s3_client, db)
+    result = s3_get_documents(page, page_size, user_data, s3_client, db)
 
-    return {"urls": urls}
+    return result
 
 
 @router.post("/process")

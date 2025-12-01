@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query';
-import type { DocumentItem } from '@/types/document-types';
+import { useState } from 'react';
+import type { PaginationDocuments } from '@/types/document-types';
+import type { PaginationState } from '@tanstack/react-table';
 import { tryCatch } from '@/utils/try-catch';
 import DocumentTable from '@/components/DocumentTable';
 import UploadFileForm from '@/components/UploadFileForm';
@@ -11,16 +13,32 @@ export const Route = createFileRoute('/_auth/documents')({
 
 function RouteComponent() {
 
-
-  const { data: documents, isLoading, isError, error } = useQuery<Array<DocumentItem>>({
-    queryFn: () => fetchDocuments(),
-    queryKey: ["documents"], 
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   })
 
-  const fetchDocuments = async (): Promise<Array<DocumentItem>> => {
+  const { data: documents, isLoading, isError, error } = useQuery<PaginationDocuments>({
+    queryFn: () => fetchDocuments(pagination),
+    queryKey: ["documents", pagination], 
+  })
+
+  const fetchDocuments = async (
+  {
+    pageIndex,
+    pageSize,
+  } : {
+    pageIndex: number
+    pageSize: number
+  }): Promise<PaginationDocuments> => {
+
+    const url = new URL(import.meta.env.VITE_API_HOST + "/document/get")
+
+    url.searchParams.set("page", String(pageIndex + 1))
+    url.searchParams.set("page_size", String(pageSize))
 
     // eslint-disable-next-line no-shadow
-    const [res, error] = await tryCatch(fetch(import.meta.env.VITE_API_HOST + "/document/all", {
+    const [res, error] = await tryCatch(fetch(url.toString(), {
       method: "GET",
       credentials: "include"
     }));
@@ -35,7 +53,7 @@ function RouteComponent() {
       throw new Error(data["detail"])
     }
 
-    return data["urls"];
+    return data;
   }
 
   return (
@@ -54,7 +72,7 @@ function RouteComponent() {
         ) : isError ? (
             <p className="text-red-400">{error.message}</p>
         ) : (
-          documents && <DocumentTable data={documents} to_invalidate={["documents"]}/>
+          documents && <DocumentTable paginationDocuments={documents} toInvalidate={["documents"]} pagination={pagination} setPagination={setPagination} />
         )}
 
       </div>
