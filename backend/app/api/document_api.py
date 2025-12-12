@@ -112,11 +112,10 @@ async def process_document(id: int, user_data: AuthUserData, qdrant_client: Qdra
     return {"message": "document successfuly processed"}
 
 
+# [(label, text), (text)]
 @router.get("/search_documents")
-async def search_documents(text:str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession):
+async def search_documents(text: str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession, label: str | None = None):
 
-    # urls = await s3_get_all_documents(user_data, db)
+    result = await service_search_documents(text, label, user_data, qdrant_client, s3_client, db)
 
-    urls = await service_search_documents(text, user_data, qdrant_client, s3_client, db)
-
-    return {"urls": urls}
+    return result

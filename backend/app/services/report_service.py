@@ -33,14 +33,12 @@ def s3_delete_report(document: Document, s3_client: S3Client, db: Session) -> Re
 
 
 async def process_report(report: ReportJson, document_id: int, user_id: int, qdrant_client: QdrantClient) -> None:
-    
-    text = await run_in_threadpool(prepare_text, report)
-    
-    chunks = await run_in_threadpool(chunk_text, text)
 
-    embeddings = await run_in_threadpool(ml_models["embedding_model"].encode, chunks)
+    texts, labels = await run_in_threadpool(get_texts_and_labels, report)
 
-    points = await run_in_threadpool(get_points, chunks, embeddings, user_id, document_id)
+    embeddings = await run_in_threadpool(ml_models["embedding_model"].encode, texts)
+
+    points = await run_in_threadpool(get_points, texts, labels, embeddings, user_id, document_id)
 
     await qdrant_client.upsert(
         collection_name=collection_name,
@@ -48,40 +46,21 @@ async def process_report(report: ReportJson, document_id: int, user_id: int, qdr
         wait=True
     )
 
-def prepare_text(report: ReportJson) -> str:
-    text = ""
-
+def get_texts_and_labels(report: ReportJson) -> tuple[list[str], list[str]]:
+    texts = []
+    labels = []
+    
     for page in report.pages:
-        block_text = ""
-        for block in page.blocks:
-            block_text = block_text + block.text
-            text = text + block.text
+        for region in page.regions:
+            texts.append(region.text.replace("-\n", "").replace("\n", " ").lower())
+            labels.append(region.label)
 
-    text = text.replace("-\n", "")
-    text = text.replace("\n", " ")
+    return texts, labels
 
-    return text
 
-def chunk_text(text: str, chunk_size: int = config.embedding_text_size, overlap: int = config.embedding_text_overlap) -> list[str]:
-    chunks = []
-    text_len = len(text)
-    start = 0
-
-    while start < text_len:
-        end = min(start + chunk_size, text_len)
-        chunk = text[start:end]
-        chunks.append(chunk)
-
-        if end == text_len:
-            break
-
-        start = end - overlap
-
-    return chunks
-
-def get_points(chunks: list[str], embeddings: Tensor, user_id: int, document_id: int) -> list[models.PointStruct]:
+def get_points(texts: list[str], labels: list[str], embeddings: Tensor, user_id: int, document_id: int) -> list[models.PointStruct]:
     points = []
-    for text, embedding in zip(chunks, embeddings):
+    for text, label, embedding in zip(texts, labels, embeddings):
         points.append(
             models.PointStruct(
                 id = uuid4(),
@@ -89,9 +68,11 @@ def get_points(chunks: list[str], embeddings: Tensor, user_id: int, document_id:
                 payload = {
                     "user_id": str(user_id),
                     "document_id": document_id,
+                    "label": label,
                     "text": text
                 }
             )
         )
 
     return points
+

@@ -46,6 +46,12 @@ async def init_qdrant(qdrant_client: AsyncQdrantClient):
 
         await qdrant_client.create_payload_index(
             collection_name=collection_name,
+            field_name="label",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+
+        await qdrant_client.create_payload_index(
+            collection_name=collection_name,
             field_name="document_id",
             field_schema=models.PayloadSchemaType.INTEGER
         )

@@ -92,8 +92,13 @@ def s3_get_documents(page: int, page_size: int, user_data: UserData, s3_client: 
     for document in documents:
         url = s3_client.generate_presigned_url(
             ClientMethod="get_object",
-            Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
-            ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
+            Params={
+                "Bucket": AWS_BUCKET, 
+                "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}",
+                "ResponseContentType": "application/pdf",
+                "ResponseContentDisposition": "inline"
+            },
+            ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS,
         )
         result.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
         
@@ -162,13 +167,14 @@ async def process_document(document: Document, user_data: UserData, qdrant_clien
             detail="Document processing failed"
         )
     
-async def search_documents(text: str, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
+async def search_documents(text: str, label: str | None, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
     logging.info(f"Searching documents for user {user_data.user_id} with string {text}")
 
+    text = text.replace("-\n", "").replace("\n", " ").lower()
+    
     embedding = await run_in_threadpool(ml_models["embedding_model"].encode, text)
 
-    filter_condition = models.Filter(
-        must=[
+    conditions = [
             models.FieldCondition(
                 key="user_id",
                 match=models.MatchValue(
@@ -176,6 +182,19 @@ async def search_documents(text: str, user_data: UserData, qdrant_client: AsyncQ
                 ),
             ),
         ]
+    
+    if label is not None:
+        conditions.append(
+            models.FieldCondition(
+                key="label",
+                match=models.MatchValue(
+                    value=label,
+                ),
+            )
+        )
+
+    filter_condition = models.Filter(
+        must=conditions
     )
 
     result = await qdrant_client.query_points_groups(
@@ -188,20 +207,23 @@ async def search_documents(text: str, user_data: UserData, qdrant_client: AsyncQ
         score_threshold=config.qdrant_distance_score_threshold
     )
 
-    documents_ids = []
-    for group in result.groups:
-        documents_ids.append(group.hits[0].payload.get("document_id"))
-    
-    logging.info(f"Presigning found documents urls for user {user_data.user_id} from s3")
-    documents = await run_in_threadpool(lambda: db.query(Document).filter(Document.id.in_(documents_ids)).all())
-    urls = []
-    for document in documents:
-        url = s3_client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
-            ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
-        )
-        urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
-    return urls
+    return result
+
+    # documents_ids = []
+    # for group in result.groups:
+    #     documents_ids.append(group.hits[0].payload.get("document_id"))
+
+    # logging.info(f"Presigning found documents urls for user {user_data.user_id} from s3")
+    # documents = await run_in_threadpool(lambda: db.query(Document).filter(Document.id.in_(documents_ids)).all())
+    # urls = []
+    # for document in documents:
+    #     url = s3_client.generate_presigned_url(
+    #         ClientMethod="get_object",
+    #         Params={"Bucket": AWS_BUCKET, "Key": f"documents/{document.s3_filename}.{document.s3_mime_type}"},
+    #         ExpiresIn=PRESIGNED_URLS_EXPIRATION_TIME_SECONDS
+    #     )
+    #     urls.append({"id": document.id,"key": f"{document.name}.{document.s3_mime_type}", "status": document.status, "url": url})
+
+    # return urls
 
 

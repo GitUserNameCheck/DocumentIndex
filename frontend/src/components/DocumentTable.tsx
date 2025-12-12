@@ -26,8 +26,14 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
             cell: info => {
                 const row = info.row.original
                 return (
-                    <div className="text-blue-300">
-                        {row.key}
+                    <div>
+                        <button
+                            onClick={() => window.open(row.url, "_blank")}
+                            className="text-blue-300 underline hover:cursor-pointer"
+                        >
+                            {row.key}
+                        </button>
+                    
                     </div>
                 )
             }

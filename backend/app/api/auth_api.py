@@ -50,5 +50,5 @@ def logout(response: Response) -> dict[str, str]:
     return {"message": "logout successful"}
 
 @router.get("/token_data", responses=auth_responses["token_data"])
-def get_token_data(token_data: Annotated[UserData, Depends(auth_service.get_current_user)]) -> UserData:
+def get_token_data(token_data: auth_service.AuthUserData) -> UserData:
     return token_data
