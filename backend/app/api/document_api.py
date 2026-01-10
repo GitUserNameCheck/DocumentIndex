@@ -87,7 +87,6 @@ def get_documents(user_data: AuthUserData, s3_client: S3Client, db: DbSession, p
 
     return result
 
-
 @router.post("/process")
 async def process_document(id: int, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client,  db: DbSession):
     document = await run_in_threadpool(lambda: db.query(Document).filter(Document.id == id).first())
@@ -113,9 +112,43 @@ async def process_document(id: int, user_data: AuthUserData, qdrant_client: Qdra
 
 
 # [(label, text), (text)]
+#https://huggingface.co/Qwen/Qwen2.5-7B-Instruct
 @router.get("/search_documents")
-async def search_documents(text: str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession, label: str | None = None):
+async def search_documents(text: str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession, label: str | None = None, document_id: int | None = None):
 
-    result = await service_search_documents(text, label, user_data, qdrant_client, s3_client, db)
+    result = await service_search_documents(text, label, document_id, user_data, qdrant_client, s3_client, db)
 
-    return result
+    if len(result.groups) < 1:
+        return {"message": "No results found"}
+
+    documents_fragments = ""
+    for point_group in result.groups:
+        for hit in point_group.hits: 
+            documents_fragments = documents_fragments + hit.payload["text"] + "\n"
+
+    messages = [
+        {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
+        {"role": "user", "content": text + "\n" + documents_fragments}
+    ]
+
+    text = ml_models["qwen_tokenizer"].apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+
+    model_inputs = ml_models["qwen_tokenizer"]([text], return_tensors="pt").to(ml_models["qwen_model"].device)
+
+    generated_ids = ml_models["qwen_model"].generate(
+        **model_inputs,
+        max_new_tokens=512
+    )
+
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+
+    response = ml_models["qwen_tokenizer"].batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+
+    return {"message": response}

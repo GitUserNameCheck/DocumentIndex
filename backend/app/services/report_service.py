@@ -61,18 +61,19 @@ def get_texts_and_labels(report: ReportJson) -> tuple[list[str], list[str]]:
 def get_points(texts: list[str], labels: list[str], embeddings: Tensor, user_id: int, document_id: int) -> list[models.PointStruct]:
     points = []
     for text, label, embedding in zip(texts, labels, embeddings):
-        points.append(
-            models.PointStruct(
-                id = uuid4(),
-                vector = embedding,
-                payload = {
-                    "user_id": str(user_id),
-                    "document_id": document_id,
-                    "label": label,
-                    "text": text
-                }
+        if len(text) > 0:
+            points.append(
+                models.PointStruct(
+                    id = uuid4(),
+                    vector = embedding,
+                    payload = {
+                        "user_id": str(user_id),
+                        "document_id": document_id,
+                        "label": label,
+                        "text": text
+                    }
+                )
             )
-        )
-
+            
     return points
 

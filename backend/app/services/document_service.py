@@ -167,7 +167,7 @@ async def process_document(document: Document, user_data: UserData, qdrant_clien
             detail="Document processing failed"
         )
     
-async def search_documents(text: str, label: str | None, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
+async def search_documents(text: str, label: str | None, document_id: int | None, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session) -> models.GroupsResult:
     logging.info(f"Searching documents for user {user_data.user_id} with string {text}")
 
     text = text.replace("-\n", "").replace("\n", " ").lower()
@@ -193,6 +193,16 @@ async def search_documents(text: str, label: str | None, user_data: UserData, qd
             )
         )
 
+    if document_id is not None:
+        conditions.append(
+            models.FieldCondition(
+                key="document_id",
+                match=models.MatchValue(
+                    value=document_id,
+                ),
+            )
+        )
+
     filter_condition = models.Filter(
         must=conditions
     )
@@ -202,9 +212,9 @@ async def search_documents(text: str, label: str | None, user_data: UserData, qd
         query_filter=filter_condition,
         query=embedding,
         group_by="document_id",
-        group_size=1,
+        group_size=10,
         limit=5,
-        score_threshold=config.qdrant_distance_score_threshold
+        # score_threshold=config.qdrant_distance_score_threshold
     )
 
     return result

@@ -20,5 +20,6 @@ class Config(BaseSettings):
     embedding_text_size: int = 150
     embedding_text_overlap: int = 50
     qdrant_distance_score_threshold: float = 0.5
+    qwen_path: str = ""
 
 config = Config()

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from magika import Magika
 from qdrant_client import AsyncQdrantClient
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 from torch import cuda
 
@@ -16,6 +17,8 @@ from app.core.qdrant import init_qdrant
 from app.db.schema import Base, engine
 from app.core.ml_models import ml_models
 
+#https://github.com/Kludex/fastapi-tips/tree/main
+# Should rewrite model management later like here https://starlette.dev/lifespan/
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
@@ -37,6 +40,15 @@ async def lifespan(app: FastAPI):
 
     ml_models["magika"] = Magika()
     ml_models["embedding_model"] = SentenceTransformer(config.embedding_model_path)
+    ml_models["qwen_model"] = AutoModelForCausalLM.from_pretrained(
+        config.qwen_path,
+        torch_dtype="auto",
+        device_map="auto"
+    )
+    logging.info(ml_models["qwen_model"].hf_device_map)
+    ml_models["qwen_tokenizer"] = AutoTokenizer.from_pretrained(config.qwen_path)
+
+
     if cuda.is_available():
         ml_models["embedding_model"] = ml_models["embedding_model"].to('cuda')
 
