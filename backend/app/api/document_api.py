@@ -38,10 +38,10 @@ def upload_document(user_data: AuthUserData, s3_client: S3Client, db: DbSession,
     # maybe should do ASGI server content-length header validation and check here validated header
     # https://github.com/fastapi/fastapi/discussions/8167
     # maybe just read chunks till it exeeds limit
-    if not 0 < file.size <= 40 * MB:
+    if not 0 < file.size <= 250 * MB:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Supported max file size is 40 mb"
+            detail="Supported max file size is 250 mb"
         )
     
     content = file.file.read()
@@ -57,9 +57,9 @@ def upload_document(user_data: AuthUserData, s3_client: S3Client, db: DbSession,
     
     document_uuid = uuid4()
 
-    s3_upload_document(content, str(document_uuid), SUPPORTED_FILE_TYPES[mime_type], filename, user_data, s3_client, db)
+    document_id = s3_upload_document(content, str(document_uuid), SUPPORTED_FILE_TYPES[mime_type], filename, user_data, s3_client, db)
 
-    return {"message": "file uploaded successfuly"}
+    return {"message": "file uploaded successfuly", "id": document_id}
 
 
 @router.post("/delete")
@@ -114,9 +114,9 @@ async def process_document(id: int, user_data: AuthUserData, qdrant_client: Qdra
 # [(label, text), (text)]
 #https://huggingface.co/Qwen/Qwen2.5-7B-Instruct
 @router.get("/search_documents")
-async def search_documents(text: str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession, label: str | None = None, document_id: int | None = None):
+async def search_documents(prompt: str, search_text: str, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession, label: str | None = None, document_id: int | None = None):
 
-    result = await service_search_documents(text, label, document_id, user_data, qdrant_client, s3_client, db)
+    result = await service_search_documents(search_text, label, document_id, user_data, qdrant_client, s3_client, db)
 
     if len(result.groups) < 1:
         return {"message": "No results found"}
@@ -128,7 +128,7 @@ async def search_documents(text: str, user_data: AuthUserData, qdrant_client: Qd
 
     messages = [
         {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
-        {"role": "user", "content": text + "\n" + documents_fragments}
+        {"role": "user", "content": prompt + "\n" + search_text + "\n" + documents_fragments}
     ]
 
     text = ml_models["qwen_tokenizer"].apply_chat_template(

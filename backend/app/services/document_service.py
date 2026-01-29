@@ -22,12 +22,13 @@ from app.models.report_models import ReportJson
 
 PRESIGNED_URLS_EXPIRATION_TIME_SECONDS = 3600 # 1 hour
 
-def s3_upload_document(content: bytes, s3_filename: str, s3_mime_type: str, user_filename: str, user_data: UserData, s3_client: S3Client, db: Session) -> None:
+def s3_upload_document(content: bytes, s3_filename: str, s3_mime_type: str, user_filename: str, user_data: UserData, s3_client: S3Client, db: Session) -> int:
     logging.info(f"Uploading file {user_filename}.{s3_mime_type} to s3 for user {user_data.user_id}")
     s3_client.upload_fileobj(Fileobj=BytesIO(content), Bucket=AWS_BUCKET, Key=f"documents/{s3_filename}.{s3_mime_type}")
     document = Document(owner_id=user_data.user_id, name=user_filename, status=DocumentStatus.UPLOADED.value, s3_filename=s3_filename, s3_mime_type=s3_mime_type, report_id=None)
     db.add(document)
     db.commit()
+    return document.id
 
 
 async def s3_delete_document(document: Document, user_data: UserData, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session)  -> None:
@@ -124,7 +125,7 @@ async def process_document(document: Document, user_data: UserData, qdrant_clien
 
             logging.info(f"Sending documents {document.s3_filename}.{document.s3_mime_type} to pager for user {user_data.user_id}")
             
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=500.0) as client:
                 response = await client.post(config.pager_url + "/", data=data, files=files)
                 response.raise_for_status()
 
