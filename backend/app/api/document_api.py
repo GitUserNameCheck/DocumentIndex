@@ -9,6 +9,7 @@ from app.core.s3 import S3Client
 from app.core.qdrant import QdrantClient
 from app.services.auth_service import AuthUserData
 from app.services.document_service import search_documents as service_search_documents, process_document as service_process_document, s3_get_documents, s3_upload_document, s3_delete_document
+from app.services.report_service import delete_report
 from app.db.schema import DbSession, Document
 from app.models.document_models import DocumentStatus
 
@@ -79,6 +80,32 @@ async def delete_document(id: int, user_data: AuthUserData, qdrant_client: Qdran
     await s3_delete_document(document, user_data, qdrant_client, s3_client, db)
 
     return {"message": "file successfuly deleted"}
+
+@router.post("/delete_report")
+async def delete_document_report(id: int, user_data: AuthUserData, qdrant_client: QdrantClient, s3_client: S3Client, db: DbSession):
+    document = await run_in_threadpool(lambda: db.query(Document).filter(Document.id == id).first())
+    if document.owner_id != user_data.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This file is not yours"
+        )
+    if document.status == DocumentStatus.PROCESSING.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is being processed"
+        )
+    if document.report_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document has no report"
+        )
+
+    await delete_report(document, user_data.user_id, qdrant_client, s3_client, db)
+    
+    document.status = DocumentStatus.UPLOADED.value
+    await run_in_threadpool(db.commit)
+
+    return {"message": "document report successfuly deleted"}
 
 @router.get("/get")
 def get_documents(user_data: AuthUserData, s3_client: S3Client, db: DbSession, page: int = 1, page_size: int = 20):

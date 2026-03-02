@@ -17,7 +17,7 @@ from app.core.s3 import AWS_BUCKET
 from app.core.config import config
 from app.core.qdrant import collection_name
 from app.models.document_models import DocumentStatus
-from app.services.report_service import process_report, s3_delete_report, s3_upload_report
+from app.services.report_service import process_report, delete_report, s3_upload_report
 from app.models.report_models import ReportJson
 
 PRESIGNED_URLS_EXPIRATION_TIME_SECONDS = 3600 # 1 hour
@@ -35,41 +35,7 @@ async def s3_delete_document(document: Document, user_data: UserData, qdrant_cli
     logging.info(f"Starting deleting process for document {document.id} which is owned by user {user_data.user_id}")
 
     if document.report_id is not None:
-        filter_condition = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="user_id",
-                    match=models.MatchValue(
-                        value=str(user_data.user_id),
-                    ),
-                ),
-                models.FieldCondition(
-                    key="document_id",
-                    match=models.MatchValue(
-                        value=document.id
-                    )
-                )
-            ]
-        )
-
-        search = await qdrant_client.query_points(
-            collection_name=collection_name,
-            query_filter=filter_condition,
-            limit=1,
-            with_payload=False,
-            with_vectors=False
-        )
-
-        if len(search.points) > 0:
-            logging.info(f"Deleting vectors for report {document.report_id} which is owned by user {user_data.user_id}")
-            await qdrant_client.delete(
-                collection_name=collection_name,
-                points_selector=filter_condition,
-                wait=True
-            )
-
-        logging.info(f"Deleting report {document.report_id} which is owned by user {user_data.user_id}")
-        await run_in_threadpool(s3_delete_report, document, s3_client, db)
+        await delete_report(document, user_data.user_id, qdrant_client, s3_client, db)
 
     logging.info(f"Deleting document {document.id} from s3")
     await run_in_threadpool(s3_client.delete_object, Bucket=AWS_BUCKET, Key=f"documents/{document.s3_filename}.{document.s3_mime_type}")

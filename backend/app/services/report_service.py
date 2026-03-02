@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from torch import Tensor
 from app.core.ml_models import ml_models
 from types_boto3_s3.client import S3Client
+from qdrant_client import AsyncQdrantClient
 from app.db.schema import Document, Report
 from app.core.s3 import AWS_BUCKET
 from app.core.qdrant import QdrantClient, collection_name
@@ -23,6 +24,13 @@ def s3_upload_report(content: bytes, s3_filename: str, document: Document, s3_cl
     db.commit()
     return report
 
+
+async def delete_report(document: Document, user_id: int, qdrant_client: AsyncQdrantClient, s3_client: S3Client, db: Session):
+    await qdrant_delete_report_points(document, user_id, qdrant_client)
+
+    logging.info(f"Deleting report {document.report_id} which is owned by user {user_id}")
+    await run_in_threadpool(s3_delete_report, document, s3_client, db)
+
 def s3_delete_report(document: Document, s3_client: S3Client, db: Session) -> Report:
     report = db.query(Report).filter(Report.id == document.report_id).first()
     logging.info(f"Deleting report {report.s3_filename} from s3 for document {report.document_id}")
@@ -30,6 +38,26 @@ def s3_delete_report(document: Document, s3_client: S3Client, db: Session) -> Re
     document.report_id = None
     db.delete(report)
     db.commit()
+
+async def qdrant_delete_report_points(document: Document, user_id: int, qdrant_client: AsyncQdrantClient):
+    filter_condition = models.Filter(
+        must=[
+            models.FieldCondition(
+                key="document_id",
+                match=models.MatchValue(
+                    value=document.id
+                )
+            )
+        ]
+    )
+
+    logging.info(f"Deleting vectors for report {document.report_id} which is owned by user {user_id}")
+    await qdrant_client.delete(
+        collection_name=collection_name,
+        points_selector=filter_condition,
+        wait=True
+    )
+
 
 
 async def process_report(report: ReportJson, document_id: int, user_id: int, qdrant_client: QdrantClient) -> None:
