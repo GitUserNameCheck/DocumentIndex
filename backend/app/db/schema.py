@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
-from sqlalchemy import ForeignKey, String, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
+from sqlalchemy import ForeignKey, String, create_engine 
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session, relationship
 
 from app.core.config import config
 
@@ -27,7 +27,6 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(30), index=True, unique=True)
     password: Mapped[str] = mapped_column(String(200))
 
-
 class Document(Base):
     __tablename__ = "document"
 
@@ -37,14 +36,15 @@ class Document(Base):
     status: Mapped[str]
     s3_filename: Mapped[str] = mapped_column(unique=True)
     s3_mime_type: Mapped[str]
-    report_id: Mapped[int] = mapped_column(ForeignKey("report.id"), nullable=True)
-
+    reports: Mapped[list["Report"]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
 class Report(Base):
     __tablename__ = "report"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), unique=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"))
     s3_filename: Mapped[str] = mapped_column(unique=True)
-
+    tag: Mapped[str]
     

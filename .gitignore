@@ -1,8 +1,4 @@
 minio/
 pgadmin/
 postgres/
-PageR/
-qdrant/
-distiluse-base-multilingual-cased-v1/
-QwenQwen2.5-7B-Instruct/
-команды.txt
+.vscode/

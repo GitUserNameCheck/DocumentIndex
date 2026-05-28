@@ -1,13 +1,11 @@
 from typing import TypedDict
 from magika import Magika
 from sentence_transformers import SentenceTransformer
-from transformers import PreTrainedModel, PreTrainedTokenizerBase, Qwen2ForCausalLM
-
+from sentence_transformers import CrossEncoder
 
 class MLModels(TypedDict):
     magika: Magika
     embedding_model: SentenceTransformer
-    qwen_model: Qwen2ForCausalLM
-    qwen_tokenizer: PreTrainedTokenizerBase
+    reranker_model: CrossEncoder
 
 ml_models: MLModels = {}

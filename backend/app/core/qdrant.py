@@ -33,17 +33,6 @@ async def init_qdrant(qdrant_client: AsyncQdrantClient):
             ),
         )
 
-        #might be useful later if slow
-        #https://qdrant.tech/documentation/guides/multitenancy/#configure-multitenancy
-        await qdrant_client.create_payload_index(
-            collection_name=collection_name,
-            field_name="user_id",
-            field_schema=models.KeywordIndexParams(
-                type=models.KeywordIndexType.KEYWORD,
-                is_tenant=True,
-            ),
-        )   
-
         await qdrant_client.create_payload_index(
             collection_name=collection_name,
             field_name="label",
@@ -56,4 +45,9 @@ async def init_qdrant(qdrant_client: AsyncQdrantClient):
             field_schema=models.PayloadSchemaType.INTEGER
         )
 
+        await qdrant_client.create_payload_index(
+            collection_name=collection_name,
+            field_name="report_id",
+            field_schema=models.PayloadSchemaType.INTEGER
+        )
 
