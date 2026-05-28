@@ -46,13 +46,13 @@ export default function Header() {
   return (
     <>
       <header className="p-4 flex items-center bg-gray-800 shadow-lg text-xl font-semibold">
-        <button
+        {/* <button
           onClick={() => setIsOpen(true)}
           className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
           aria-label="Open menu"
         >
           <Menu size={24} />
-        </button>
+        </button> */}
         <div className="flex flex-row w-full justify-between items-center">
           <h1 className="ml-4">
             <Link to="/">
@@ -69,7 +69,7 @@ export default function Header() {
               </button>
             </h1>}
             {!auth.user && <h1>
-              <Link to="/login">
+              <Link to="/">
                 Sign in
               </Link>
             </h1>}
@@ -82,7 +82,7 @@ export default function Header() {
         </div>
       </header>
 
-      <aside
+      {/* <aside
         className={`fixed top-0 left-0 h-full w-80 bg-gray-900 border-r-1 border-gray-700 z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
@@ -125,7 +125,7 @@ export default function Header() {
           </Link>}
 
         </nav>
-      </aside>
+      </aside> */}
     </>
   )
 }

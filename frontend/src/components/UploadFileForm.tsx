@@ -1,6 +1,7 @@
 import {  useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from 'sonner';
 import type {SubmitHandler} from "react-hook-form";
 import type {UploadFileFormValues} from "@/utils/form-schema";
 import {  uploadFileSchema } from "@/utils/form-schema"
@@ -24,27 +25,46 @@ export default function UploadFileForm({ url, to_invalidate }: { url: string, to
     const onSubmit: SubmitHandler<UploadFileFormValues> = async (form_data) => {
         console.log(form_data)
 
-        const modifier_form_data = new FormData();
+        const files = form_data.fileList
 
-        modifier_form_data.append('file', form_data.fileList[0])
-
-
-        const [res, error] = await tryCatch(fetch(import.meta.env.VITE_API_HOST + url, {
-            method: "POST",
-            body: modifier_form_data,
-            credentials: "include"
-        }));
-
-        if (error) {
-            setError("root", { message: error.message });
-            return;
+        if (files.length === 0) {
+            setError("root", { message: "No files selected" })
+            return
         }
 
-        const data = await res.json();
+        for (const file of files) {
 
-        if (!res.ok) {
-            setError("root", { message: data["detail"] })
-            return;
+            const formData = new FormData()
+            formData.append("file", file)
+
+            const toastId =  toast.loading('Uploading file', {
+                closeButton: true,
+                description: file.name
+            });
+
+            const [res, error] = await tryCatch(fetch(import.meta.env.VITE_API_HOST + url, {
+                method: "POST",
+                body: formData,
+                credentials: "include"
+            }));
+
+            if (error) {
+                setError("root", { message: error.message });
+                return;
+            }
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError("root", { message: data["detail"] })
+                return;
+            }
+
+            toast.dismiss(toastId);
+
+            toast.success('Uploaded file' + file.name, {
+                closeButton: true,
+            });
         }
 
         if (to_invalidate != null) {
@@ -59,6 +79,7 @@ export default function UploadFileForm({ url, to_invalidate }: { url: string, to
             <div className="flex flex-row">
                 <input
                     type="file"
+                    multiple
                     {...register('fileList')}
                     className="w-full text-sm text-blue-300 mr-4 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-gray-800 file:font-semibold file:bg-gray-100"
                 />

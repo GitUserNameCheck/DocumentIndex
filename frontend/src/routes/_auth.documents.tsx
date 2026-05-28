@@ -6,6 +6,7 @@ import type { PaginationState } from '@tanstack/react-table';
 import { tryCatch } from '@/utils/try-catch';
 import DocumentTable from '@/components/DocumentTable';
 import UploadFileForm from '@/components/UploadFileForm';
+import SkeletonTable from '@/components/SkeletonTable';
 
 export const Route = createFileRoute('/_auth/documents')({
   component: RouteComponent,
@@ -56,8 +57,9 @@ function RouteComponent() {
     return data;
   }
 
+
   return (
-    <div className="flex justify-center mt-20">
+    <div className="flex justify-center">
 
       <div className="flex flex-col items-center bg-slate-800 p-3 rounded-2xl shadow-lg">
 
@@ -68,7 +70,9 @@ function RouteComponent() {
         </div>
 
         {isLoading ? (
-          <div>Loading…</div>
+          <div>
+            <SkeletonTable rows={5} />
+          </div>
         ) : isError ? (
             <p className="text-red-400">{error.message}</p>
         ) : (

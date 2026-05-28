@@ -29,7 +29,7 @@ export default function IdPostActionButton({ url, id, toInvalidate, actionLabel 
     }
 
     return (
-        <button onClick={onClick} className="px-2 py-1 border rounded text-sm hover:cursor-pointer">
+        <button onClick={onClick} className="px-2 py-1 border rounded hover:cursor-pointer">
             {actionLabel}
         </button>
     )

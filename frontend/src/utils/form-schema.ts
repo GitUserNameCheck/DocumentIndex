@@ -13,9 +13,14 @@ const MAX_UPLOAD_SIZE = 40 * 1024 * 1024
 export const uploadFileSchema = z.object({
     fileList: z
     .instanceof(FileList)
-    .refine((fileList) => fileList.length === 1, 'Expected exactly one file.')
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    .refine((fileList) => fileList[0]?.size <= MAX_UPLOAD_SIZE, 'Max file size is 40MB.')
+    .refine((fileList) => fileList.length > 0, "Please select at least one file.")
+    .refine(
+        (fileList) =>
+            Array.from(fileList).every(
+                (file) => file.size <= MAX_UPLOAD_SIZE
+            ),
+        "Each file must be smaller than 40MB."
+    )
 
 });
 

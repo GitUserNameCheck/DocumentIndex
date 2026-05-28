@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
+import { Toaster } from 'sonner';
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
@@ -36,12 +37,24 @@ declare module '@tanstack/react-router' {
 function InnerApp() {
   const auth = Auth.useAuth()
   return <RouterProvider router={router} context={{ auth }} />
+
 }
 
 function App() {
   return (
     <Auth.Provider>
       <InnerApp />
+      <Toaster toastOptions={{
+        style: {
+          background: "#1e2939",
+          color: "#ffffff",
+          border: "#1e2939",
+        }, 
+        classNames: {
+          description: "!text-white",
+          closeButton: "!bg-red-500 !text-white !border-red-500"
+        },
+      }} />
     </Auth.Provider>
   )
 }

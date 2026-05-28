@@ -55,7 +55,7 @@ async def s3_delete_document(document: Document, qdrant_client: AsyncQdrantClien
 
 def s3_get_documents(page: int, page_size: int, user_data: UserData, s3_client: S3Client, db: Session) -> list[dict[str, str]]:
     logging.info(f"Presigning documents urls")
-    query = db.query(Document).filter(Document.owner_id == user_data.user_id)
+    query = db.query(Document).filter(Document.owner_id == user_data.user_id).order_by(Document.id)
 
     total_items = query.count()
 

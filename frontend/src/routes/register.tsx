@@ -10,7 +10,7 @@ export const Route = createFileRoute('/register')({
   beforeLoad: ({ context }) => {
     if (context.auth?.user != null) {
       throw redirect({
-        to: '/',
+        to: '/documents',
       })
     }
   },
@@ -48,7 +48,7 @@ function RouteComponent() {
       return;
     }
     navigate({
-      to: '/login',
+      to: '/',
     })
   }
 

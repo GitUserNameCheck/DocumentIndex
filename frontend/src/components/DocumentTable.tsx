@@ -14,6 +14,7 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
         columnHelper.display({
             id: "order",
             header: "#",
+            size: 24,
             cell: ({ row, table }) => {
                 const pageIndex = table.getState().pagination.pageIndex
                 const pageSize = table.getState().pagination.pageSize
@@ -23,6 +24,7 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
         }),
         columnHelper.accessor('key', {
             header: 'Name',
+            size: 160,
             cell: info => {
                 const row = info.row.original
                 return (
@@ -38,20 +40,27 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                 )
             }
         }),
-        columnHelper.accessor('status', { header: 'Status', cell: info => info.getValue() }),
+        columnHelper.accessor('status', { 
+            header: 'Status', 
+            size: 80,
+            cell: info => info.getValue() 
+        }),
         columnHelper.display({
             id: 'download',
             header: 'Download',
+            size: 80,
             cell: ({ row }) => <DownloadButton url={row.original.url} name={row.original.key} />
         }),
         columnHelper.display({
             id: 'delete',
             header: 'Delete',
+            size: 80,
             cell: ({ row }) => <IdPostActionButton url={"/document/delete"} id={row.original.id} toInvalidate={toInvalidate} actionLabel="Delete" />
         }),
         columnHelper.display({
             id: 'process',
             header: 'Process',
+            size: 80,
             cell: ({ row }) => <IdPostActionButton url={"/document/process"} id={row.original.id} toInvalidate={toInvalidate} actionLabel="Process" />
         })
     ]
@@ -65,7 +74,8 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
         state:{
             pagination,
         },
-        onPaginationChange: setPagination
+        onPaginationChange: setPagination,
+        columnResizeMode: "onChange"
     })
 
     return (
@@ -75,8 +85,10 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id} className="border-b text-left">
                             {headerGroup.headers.map(header => (
-                                <th key={header.id} className="px-3 py-2 text-sm text-gray-300">
-                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                <th key={header.id}  className="px-3 py-2 text-gray-300">
+                                    <div style={{ width: header.getSize() }}>
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                    </div>
                                 </th>
                             ))}
                         </tr>
@@ -86,8 +98,10 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                     {table.getRowModel().rows.map(row => (
                         <tr key={row.id} className="border-b hover:bg-gray-900">
                             {row.getVisibleCells().map(cell => (
-                                <td key={cell.id} className="px-3 py-2 text-sm">
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                <td key={cell.id} style={{ width: cell.column.getSize() }} className="px-3 py-2 truncate">
+                                    <div style={{ width: cell.column.getSize() }}>
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </div>
                                 </td>
                             ))}
                         </tr>

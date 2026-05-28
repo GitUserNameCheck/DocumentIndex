@@ -20,7 +20,7 @@ export default function DownloadButton({ url, name }: { url: string, name: strin
     }
 
     return (
-        <button onClick={onDownload} className="px-2 py-1 border rounded text-sm hover:cursor-pointer">
+        <button onClick={onDownload} className="px-2 py-1 border rounded hover:cursor-pointer">
             Download
         </button>
     )

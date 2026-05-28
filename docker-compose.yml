@@ -31,7 +31,7 @@ services:
     networks:
       - service_network
   page_reade_modified:
-    image: pager
+    image: pager_main
     container_name: page_reader
     ports:
       - "8000:8000"
