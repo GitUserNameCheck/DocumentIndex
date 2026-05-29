@@ -2,6 +2,7 @@ import {  createColumnHelper, flexRender, getCoreRowModel, useReactTable } from 
 import { useState } from "react";
 import DownloadButton from "./DownloadButton";
 import IdPostActionButton from "./IdPostActionButton";
+import ReportModal from "./ReportModal";
 import type {PaginationState, RowSelectionState} from "@tanstack/react-table";
 import type { DocumentItem, PaginationDocuments } from "@/types/document-types";
 
@@ -38,9 +39,7 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                 const pageIndex = table.getState().pagination.pageIndex
                 const pageSize = table.getState().pagination.pageSize
 
-                return row.original.id
-
-                // return pageIndex * pageSize + row.index + 1
+                return pageIndex * pageSize + row.index + 1
             }
         }),
         columnHelper.accessor('key', {
@@ -51,7 +50,7 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                 return (
                     <div>
                         <button
-                            onClick={() => window.open(row.url, "_blank")}
+                            onClick={() => window.open(row.url, "_blank", "noopener,noreferrer")}
                             className="text-blue-300 underline hover:cursor-pointer"
                         >
                             {row.key}
@@ -63,15 +62,28 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
         }),
         columnHelper.accessor('status', { 
             header: 'Status', 
-            size: 80,
+            size: 160,
             cell: info => info.getValue() 
         }),
         columnHelper.display({
             id: 'download',
             header: 'Download',
-            size: 80,
+            size: 120,
             cell: ({ row }) => <DownloadButton url={row.original.url} name={row.original.key} />
         }),
+        columnHelper.display({
+            id: "reports",
+            header: "Reports",
+            size: 120,
+            cell: ({ row }) => (
+                <button
+                    onClick={() => {setSelectedDocument(row.original); document.body.style.overflow = "hidden" }}
+                    className="px-2 py-1 border rounded hover:cursor-pointer"
+                >
+                    View Reports
+                </button>
+            )
+        }), 
         // columnHelper.display({
         //     id: 'delete',
         //     header: 'Delete',
@@ -112,12 +124,15 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
     type ProcessType = "pymupdf_full" | "mineru" | "pager";
 
     const PROCESS_OPTIONS: Array<{ value: ProcessType; label: string }> = [
-        { value: "pymupdf_full", label: "Default" },
+        { value: "pymupdf_full", label: "Pymupdf" },
         { value: "mineru", label: "MinerU" },
         { value: "pager", label: "Pager" },
     ];
 
     const [processType, setProcessType] = useState<ProcessType>("pymupdf_full")
+
+    const [selectedDocument, setSelectedDocument] =
+        useState<DocumentItem | null>(null)
 
     return (
         <div>
@@ -131,7 +146,11 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                     <select
                         value={processType}
                         onChange={(e) => setProcessType(e.target.value as ProcessType)}
-                        className="px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-600"
+                        className="px-2 py-1 
+                                bg-slate-700 border border-slate-600 
+                                rounded-lg text-gray-200 
+                                accent-cyan-700 
+                                focus:outline-none focus:ring-2 focus:ring-cyan-600"
                     >
                         {PROCESS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -191,6 +210,12 @@ export default function DocumentTable({ paginationDocuments, toInvalidate, pagin
                     ))}
                 </tbody>
             </table>
+            {selectedDocument && (
+                <ReportModal
+                    document={selectedDocument}
+                    onClose={() => { setSelectedDocument(null); document.body.style.overflow = "auto" }}
+                />
+            )}
             <div className="flex items-center gap-3 mt-4 p-3 bg-slate-800 rounded-xl shadow-md border border-slate-700">
                 <button
                     className="px-3 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition"

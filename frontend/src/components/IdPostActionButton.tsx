@@ -51,8 +51,6 @@ export default function IdPostActionButton(
                 return;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1000))
-
             toast.dismiss(toastId);
 
             toast.success(toastCompleteLabel + row.key, {

@@ -5,7 +5,7 @@ export default function SkeletonTable({ rows }: { rows: number}) {
         <table>
             <thead>
                 <tr className="border-b text-left">
-                    {["#", "Name", "Status", "Download"].map((h) => (
+                    {["#", "Name", "Status", "Download", "Reports"].map((h) => (
                         <th key={h} className="px-3 py-2 text-gray-300">
                             {h}
                         </th>
@@ -16,9 +16,15 @@ export default function SkeletonTable({ rows }: { rows: number}) {
             <tbody>
                 {Array.from({ length: rows }).map((_, i) => (
                     <tr key={i} className="border-b">
+                        
+                        {/* Checkmark */}
+                        <td className="px-3 py-2">
+                            <div className="h-[1rem] w-[25px] bg-gray-700 rounded animate-pulse" />
+                        </td>
+
                         {/* Order */}
                         <td className="px-3 py-2">
-                            <div className="h-[1rem] w-6 bg-gray-700 rounded animate-pulse" />
+                            <div className="h-[1rem] w-[25px] bg-gray-700 rounded animate-pulse" />
                         </td>
 
                         {/* Name */}
@@ -28,12 +34,17 @@ export default function SkeletonTable({ rows }: { rows: number}) {
 
                         {/* Status */}
                         <td className="px-3 py-2">
-                            <div className="h-[1rem] w-20 bg-gray-700 rounded animate-pulse" />
+                            <div className="h-[1rem] w-40 bg-gray-700 rounded animate-pulse" />
                         </td>
 
                         {/* Download */}
                         <td className="px-3 py-2">
-                            <div className="h-[1rem] w-20 bg-gray-700 rounded animate-pulse" />
+                            <div className="h-[1rem] w-30 bg-gray-700 rounded animate-pulse" />
+                        </td>
+
+                        {/* Reports */}
+                        <td className="px-3 py-2">
+                            <div className="h-[1rem] w-30 bg-gray-700 rounded animate-pulse" />
                         </td>
                     </tr>
                 ))}

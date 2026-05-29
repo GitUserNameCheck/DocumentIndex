@@ -212,23 +212,31 @@ async def report_points_based_search(prompt: str, search_text: str, report_id: i
         {"type": "text", "text": search_text},
     ]
 
+    evidence_items = []
     for scored_point in result.points:
         data = scored_point.payload.get("data", "")
         if isinstance(data, dict):
             if "text" in data:
-                content.append({"type": "text", "text": data.get("text", "")})
+                item = {"type": "text", "text": data.get("text", "")}
+                content.append(item)
+                evidence_items.append(item)
             if "image" in data:
-                content.append({
+                item = {
                     "type": "image_url",
                     "image_url": {
                         # Critical: Format as data:image/jpeg;base64,<data>
                         "url": data.get("image", "")
                     },
-                })
+                }
+                content.append(item)
+                evidence_items.append(item)
         elif isinstance(data, list):
             content.extend(data)
+            evidence_items.extend(data)
         else: 
-            content.append({"type": "text", "text": data})
+            item = {"type": "text", "text": data}
+            content.append(item)
+            evidence_items.append(item)
 
     messages = [
         {"role": "system", "content": prompt},
@@ -248,7 +256,7 @@ async def report_points_based_search(prompt: str, search_text: str, report_id: i
 
     result = response.choices[0].message.content
 
-    return {"message": result}
+    return {"result": result, "items": evidence_items}
 
 @router.get("/report_based_search")
 async def report_based_search(prompt: str, search_text: str, report_id: int, user_data: AuthUserData, s3_client: S3Client, open_ai_client: OpenAIClient, db: DbSession):
