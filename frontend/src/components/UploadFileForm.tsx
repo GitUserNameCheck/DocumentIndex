@@ -50,6 +50,7 @@ export default function UploadFileForm({ url, to_invalidate }: { url: string, to
 
             if (error) {
                 setError("root", { message: error.message });
+                toast.dismiss(toastId);
                 return;
             }
 
@@ -57,6 +58,7 @@ export default function UploadFileForm({ url, to_invalidate }: { url: string, to
 
             if (!res.ok) {
                 setError("root", { message: data["detail"] })
+                toast.dismiss(toastId);
                 return;
             }
 

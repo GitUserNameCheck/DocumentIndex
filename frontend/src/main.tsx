@@ -44,7 +44,7 @@ function App() {
   return (
     <Auth.Provider>
       <InnerApp />
-      <Toaster toastOptions={{
+      <Toaster expand visibleToasts={3} toastOptions={{
         style: {
           background: "#1e2939",
           color: "#ffffff",

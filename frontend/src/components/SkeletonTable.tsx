@@ -5,7 +5,7 @@ export default function SkeletonTable({ rows }: { rows: number}) {
         <table>
             <thead>
                 <tr className="border-b text-left">
-                    {["#", "Name", "Status", "Download", "Delete", "Process"].map((h) => (
+                    {["#", "Name", "Status", "Download"].map((h) => (
                         <th key={h} className="px-3 py-2 text-gray-300">
                             {h}
                         </th>
@@ -32,16 +32,6 @@ export default function SkeletonTable({ rows }: { rows: number}) {
                         </td>
 
                         {/* Download */}
-                        <td className="px-3 py-2">
-                            <div className="h-[1rem] w-20 bg-gray-700 rounded animate-pulse" />
-                        </td>
-
-                        {/* Delete */}
-                        <td className="px-3 py-2">
-                            <div className="h-[1rem] w-20 bg-gray-700 rounded animate-pulse" />
-                        </td>
-
-                        {/* Process */}
                         <td className="px-3 py-2">
                             <div className="h-[1rem] w-20 bg-gray-700 rounded animate-pulse" />
                         </td>
